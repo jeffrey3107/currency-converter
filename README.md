@@ -1,3 +1,3 @@
 # currency-converter
 simple currency converter
-an application that converts your currencies
+an application that does simple currency conversions
