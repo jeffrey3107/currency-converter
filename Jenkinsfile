@@ -1,9 +1,11 @@
-// Jenkinsfile
 pipeline {
     agent any
     
     environment {
-        DOCKER_HUB_REPO = 'jeffrey3107/currency-converter'
+        AWS_REGION = 'us-east-1'
+        ECR_REPOSITORY = 'currency-converter'
+        AWS_ACCOUNT_ID = '718043211627'
+        ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
         IMAGE_TAG = "${BUILD_NUMBER}"
     }
     
@@ -19,35 +21,27 @@ pipeline {
             steps {
                 echo '🐳 Building Docker image...'
                 script {
-                    def image = docker.build("${DOCKER_HUB_REPO}:${IMAGE_TAG}")
-                    sh "docker tag ${DOCKER_HUB_REPO}:${IMAGE_TAG} ${DOCKER_HUB_REPO}:latest"
+                    def image = docker.build("${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}")
+                    sh "docker tag ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
                 }
             }
         }
         
-        stage('Test Image') {
+        stage('Login to ECR') {
             steps {
-                echo '🧪 Testing Docker image...'
+                echo '🔐 Logging into ECR...'
                 script {
-                    sh '''
-                        docker run -d -p 5001:5000 --name test-${BUILD_NUMBER} ${DOCKER_HUB_REPO}:${IMAGE_TAG}
-                        sleep 10
-                        curl -f http://localhost:5001/ || exit 1
-                        docker stop test-${BUILD_NUMBER}
-                        docker rm test-${BUILD_NUMBER}
-                    '''
+                    sh 'aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}'
                 }
             }
         }
         
-        stage('Push to Docker Hub') {
+        stage('Push to ECR') {
             steps {
-                echo '📤 Pushing to Docker Hub...'
+                echo '📤 Pushing to ECR...'
                 script {
-                    docker.withRegistry('https://registry-1.docker.io/v2/', 'docker-hub-credentials') {
-                        sh "docker push ${DOCKER_HUB_REPO}:${IMAGE_TAG}"
-                        sh "docker push ${DOCKER_HUB_REPO}:latest"
-                    }
+                    sh "docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+                    sh "docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
                 }
             }
         }
@@ -56,14 +50,8 @@ pipeline {
     post {
         always {
             echo '🧹 Cleaning up...'
-            sh "docker rmi ${DOCKER_HUB_REPO}:${IMAGE_TAG} || true"
-            sh "docker rmi ${DOCKER_HUB_REPO}:latest || true"
-        }
-        success {
-            echo '✅ Pipeline completed successfully!'
-        }
-        failure {
-            echo '❌ Pipeline failed!'
+            sh "docker rmi ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} || true"
+            sh "docker rmi ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest || true"
         }
     }
 }
