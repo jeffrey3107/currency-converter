@@ -16,6 +16,21 @@ currency-converter/
 ├── argocd-apps/                     # GitOps configuration
 │   └── currency-converter-app.yaml  # ArgoCD application
 └── README.md                        # Documentation
+
+
+currency-converter/
+- app.py # Flask currency converter app
+- Dockerfile.txt # Multi-stage container build
+- requirements.txt # Python dependencies
+- templates/index.html # Frontend interface
+- Jenkinsfile # CI/CD pipeline configuration
+- k8s-manifests/ # Kubernetes deployments
+  - deployment.yaml # Pod specifications
+  - service.yaml # LoadBalancer service
+- argocd-apps/ # GitOps configuration
+  - currency-converter-app.yaml # ArgoCD application
+- README.md # Documentation
+
 🏗️ Infrastructure Components
 1. Application Layer
 
