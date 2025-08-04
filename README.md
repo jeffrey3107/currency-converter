@@ -65,7 +65,7 @@ Jenkins CI/CD: http://3.93.230.198:8080
 Grafana Monitoring: Available via LoadBalancer
 Prometheus Metrics: Available via LoadBalancer
 
-🔧 Key Technologies Mastered
+🔧 Key Technologies
 Infrastructure as Code
 
 eksctl: EKS cluster creation
