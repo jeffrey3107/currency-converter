@@ -2,7 +2,7 @@
 simple currency converter
 
 Complete DevOps Infrastructure Summary 🚀
-Based on our extensive work, here's everything we've built for your currency converter application:
+Here's everything I've built for my currency converter application:
 📁 Repository Structure
 currency-converter/
 ├── app.py                           # Flask currency converter app
