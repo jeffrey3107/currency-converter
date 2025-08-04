@@ -17,20 +17,6 @@ currency-converter/
 │   └── currency-converter-app.yaml  # ArgoCD application
 └── README.md                        # Documentation
 
-
-currency-converter/
-- app.py # Flask currency converter app
-- Dockerfile.txt # Multi-stage container build
-- requirements.txt # Python dependencies
-- templates/index.html # Frontend interface
-- Jenkinsfile # CI/CD pipeline configuration
-- k8s-manifests/ # Kubernetes deployments
-  - deployment.yaml # Pod specifications
-  - service.yaml # LoadBalancer service
-- argocd-apps/ # GitOps configuration
-  - currency-converter-app.yaml # ArgoCD application
-- README.md # Documentation
-
 🏗️ Infrastructure Components
 1. Application Layer
 
@@ -114,6 +100,24 @@ Enterprise-Grade Features
 ✅ Container Registry: Secure image storage
 Production Workflow
 Developer → Git Push → Jenkins Build → ECR Push → ArgoCD Sync → Kubernetes Deploy → Users
+
+setting up these commands are quick and easy, install homebrew
+
+# 1. Install tools (1 minute)
+brew install awscli kubectl eksctl
+
+# 2. Clone repo (30 seconds)
+git clone https://github.com/jeffrey3107/currency-converter.git
+cd currency-converter
+
+# 3. Create cluster (15 minutes)
+eksctl create cluster --name currency-converter-k8s --region us-east-1 --node-type t3.medium --nodes 2
+
+# 4. Create ECR and deploy (3 minutes)
+aws ecr create-repository --repository-name currency-converter --region us-east-1
+# Build, tag, push, and deploy your app
+
+---
 
 # Pipeline test - Sat Aug  2 02:00:58 UTC 2025
 # ArgoCD GitOps SUCCESS! 🎉 - Sun Aug  3 02:43:24 UTC 2025
