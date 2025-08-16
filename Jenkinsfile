@@ -18,34 +18,38 @@ pipeline {
             }
         }
         
-        stage('📊 SonarQube Analysis') {
-            steps {
-                echo 'Running code quality analysis...'
-                script {
-                    sh '''
-                        cat > sonar-project.properties << EOF
+     stage('📊 SonarQube Analysis') {
+    steps {
+        echo 'Running code quality analysis...'
+        script {
+            // Write sonar-project.properties (optional, if not already committed in repo)
+            sh '''
+                cat > sonar-project.properties << EOF
 sonar.projectKey=${SONAR_PROJECT_KEY}
 sonar.projectName=Currency Converter
 sonar.projectVersion=1.0
 sonar.sources=.
 sonar.exclusions=**/*.log,**/venv/**,**/__pycache__/**
-sonar.host.url=http://localhost:9000
 EOF
-                    '''
-                    
-                    withSonarQubeEnv('SonarQube') {
-                        sh '''
-                            docker run --rm --network host \
-                                -v "${PWD}:/usr/src" \
-                                -w /usr/src \
-                                sonarsource/sonar-scanner-cli:latest \
-                                -Dsonar.login=admin \
-                                -Dsonar.password=admin
-                        '''
-                    }
-                }
+            '''
+            
+            // Use Jenkins SonarQube environment (configured in Manage Jenkins)
+            withSonarQubeEnv('SonarQube') {
+                sh '''
+                    docker run --rm --network host \
+                        -v "${PWD}:/usr/src" \
+                        -w /usr/src \
+                        sonarsource/sonar-scanner-cli:latest \
+                        -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=$SONAR_HOST_URL \
+                        -Dsonar.login=$SONAR_AUTH_TOKEN
+                '''
             }
         }
+    }
+}
+
         
         stage('🐳 Build Image') {
             steps {
