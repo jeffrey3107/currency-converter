@@ -1,4 +1,3 @@
-#app.py
 from flask import Flask, render_template, request
 import requests
 
@@ -8,7 +7,6 @@ API_URL = "http://apilayer.net/api/live"
 ACCESS_KEY = "d26a7d253982c47715e2e8ba2216a62a"  # Your API key
 CURRENCIES = "EUR,GBP,CAD,PLN"
 SOURCE_CURRENCY = "USD"
-
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
@@ -29,9 +27,8 @@ def home():
             rate = data['quotes'][f"USD{target_currency}"]
             converted_amount = rate * amount
             return render_template('index.html', converted_amount=converted_amount, target_currency=target_currency, amount=amount)
-
+    
     return render_template('index.html', converted_amount=None)
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
