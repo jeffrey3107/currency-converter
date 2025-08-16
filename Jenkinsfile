@@ -54,11 +54,12 @@ EOF
         stage('🐳 Build Image') {
             steps {
                 echo 'Building Docker image...'
-                script {
-                    def image = docker.build("${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}")
-                    sh "docker tag ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} \
-                        ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
-                }
+               sh '''
+                docker build -t ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} .
+                docker tag ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} \
+                    ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+                echo "✅ Built: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+                '''
             }
         }
         
