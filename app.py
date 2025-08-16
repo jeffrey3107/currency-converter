@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request
 import requests
-import os
 
 app = Flask(__name__)
 
@@ -26,17 +25,9 @@ def home():
         if data['success']:
             rate = data['quotes'][f"USD{target_currency}"]
             converted_amount = rate * amount
-            return render_template('index.html', 
-                                 converted_amount=converted_amount, 
-                                 target_currency=target_currency, 
-                                 amount=amount)
-        else:
-            return render_template('index.html', 
-                                 error="Failed to fetch exchange rates",
-                                 converted_amount=None)
+            return render_template('index.html', converted_amount=converted_amount, target_currency=target_currency, amount=amount)
     
     return render_template('index.html', converted_amount=None)
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)

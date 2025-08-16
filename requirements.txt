@@ -1,4 +1,4 @@
-flask==2.2.5
-requests==2.28.1
-gunicorn
+flask==2.3.3
+requests==2.28.2
+urllib3==1.26.18
 gunicorn==21.2.0
