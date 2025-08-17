@@ -18,47 +18,44 @@ pipeline {
             }
         }
         
-     stage('📊 SonarQube Analysis') {
-    steps {
-        echo 'Running code quality analysis...'
-        script {
-            // Write sonar-project.properties (optional, if not already committed in repo)
-            sh '''
-                cat > sonar-project.properties << EOF
+        stage('📊 SonarQube Analysis') {
+            steps {
+                echo 'Running code quality analysis...'
+                script {
+                    sh '''
+                        cat > sonar-project.properties << EOFSONAR
 sonar.projectKey=${SONAR_PROJECT_KEY}
 sonar.projectName=Currency Converter
 sonar.projectVersion=1.0
 sonar.sources=.
 sonar.exclusions=**/*.log,**/venv/**,**/__pycache__/**
-EOF
-            '''
-            
-            // Use Jenkins SonarQube environment (configured in Manage Jenkins)
-            withSonarQubeEnv('SonarQube') {
-                sh '''
-                    docker run --rm --network host \
-                        -v "${PWD}:/usr/src" \
-                        -w /usr/src \
-                        sonarsource/sonar-scanner-cli:latest \
-                        -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                        -Dsonar.sources=. \
-                        -Dsonar.host.url=$SONAR_HOST_URL \
-                        -Dsonar.login=$SONAR_AUTH_TOKEN
-                '''
+EOFSONAR
+                    '''
+                    
+                    withSonarQubeEnv('SonarQube') {
+                        sh '''
+                            docker run --rm --network host \
+                                -v "${PWD}:/usr/src" \
+                                -w /usr/src \
+                                sonarsource/sonar-scanner-cli:latest \
+                                -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                                -Dsonar.sources=. \
+                                -Dsonar.host.url=$SONAR_HOST_URL \
+                                -Dsonar.login=$SONAR_AUTH_TOKEN
+                        '''
+                    }
+                }
             }
         }
-    }
-}
-
         
         stage('🐳 Build Image') {
             steps {
                 echo 'Building Docker image...'
-               sh '''
-                docker build -t ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} .
-                docker tag ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} \
-                    ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
-                echo "✅ Built: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+                sh '''
+                    docker build -t ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} .
+                    docker tag ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} \
+                        ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+                    echo "✅ Built: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
                 '''
             }
         }
@@ -67,14 +64,17 @@ EOF
             steps {
                 echo 'Testing Docker image...'
                 sh '''
-                    CONTAINER_ID=$(docker run -d -p 5001:5000 \
+                    docker stop currency-test-container 2>/dev/null || true
+                    docker rm currency-test-container 2>/dev/null || true
+                    
+                    CONTAINER_ID=$(docker run -d --name currency-test-container -p 5001:5000 \
                         ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG})
                     
                     sleep 15
                     curl -f http://localhost:5001 || exit 1
                     
-                    docker stop $CONTAINER_ID
-                    docker rm $CONTAINER_ID
+                    docker stop currency-test-container || true
+                    docker rm currency-test-container || true
                     echo "✅ Tests passed!"
                 '''
             }
