@@ -26,5 +26,5 @@ USER appuser
 # Expose port 5000
 EXPOSE 5000
 
-# Use python directly instead of gunicorn
-CMD ["python", "app.py"]
+# Use gurnicorn\
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
