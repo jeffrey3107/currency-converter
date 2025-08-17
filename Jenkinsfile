@@ -64,17 +64,28 @@ EOFSONAR
             steps {
                 echo 'Testing Docker image...'
                 sh '''
+                    # Create a test network
+                    docker network create test-network || true
+                    
+                    # Clean up any existing test containers
                     docker stop currency-test-container 2>/dev/null || true
                     docker rm currency-test-container 2>/dev/null || true
                     
-                    CONTAINER_ID=$(docker run -d --name currency-test-container -p 5001:5000 \
-                        ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG})
+                    # Run container without port mapping (internal only)
+                    docker run -d --name currency-test-container --network test-network \
+                        ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
                     
-                    sleep 15
-                    curl -f http://localhost:5001 || exit 1
+                    # Wait for startup
+                    sleep 20
                     
+                    # Test using container name in network
+                    docker run --rm --network test-network curlimages/curl:latest \
+                        curl -f http://currency-test-container:5000
+                    
+                    # Cleanup
                     docker stop currency-test-container || true
                     docker rm currency-test-container || true
+                    docker network rm test-network || true
                     echo "✅ Tests passed!"
                 '''
             }
