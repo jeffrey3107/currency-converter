@@ -94,10 +94,14 @@ EOFSONAR
         stage('🔐 ECR Login') {
             steps {
                 echo 'Logging into ECR...'
-                sh '''
-                    aws ecr get-login-password --region ${AWS_REGION} | \
-                    docker login --username AWS --password-stdin ${ECR_REGISTRY}
-                '''
+                // Use AWS credentials from Jenkins
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', 
+                                credentialsId: 'aws-credentials']]) {
+                    sh '''
+                        aws ecr get-login-password --region ${AWS_REGION} | \
+                        docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                    '''
+                }
             }
         }
         
@@ -118,28 +122,34 @@ EOFSONAR
             }
             steps {
                 echo 'Deploying to EC2...'
-                sh '''
-                    docker stop currency-converter-app || true
-                    docker rm currency-converter-app || true
-                    
-                    docker pull ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
-                    
-                    docker run -d --name currency-converter-app \
-                        --restart unless-stopped \
-                        -p 5000:5000 \
-                        ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
-                    
-                    sleep 10
-                    curl -f http://localhost:5000 || exit 1
-                    echo "✅ Deployed successfully!"
-                '''
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', 
+                                credentialsId: 'aws-credentials']]) {
+                    sh '''
+                        docker stop currency-converter-app || true
+                        docker rm currency-converter-app || true
+                        
+                        aws ecr get-login-password --region ${AWS_REGION} | \
+                        docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                        
+                        docker pull ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+                        
+                        docker run -d --name currency-converter-app \
+                            --restart unless-stopped \
+                            -p 5000:5000 \
+                            ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+                        
+                        sleep 10
+                        curl -f http://localhost:5000 || exit 1
+                        echo "✅ Deployed successfully!"
+                    '''
+                }
             }
         }
     }
     
     post {
         always {
-            echo '🧹 Cleanup...'
+            echo '�� Cleanup...'
             sh '''
                 docker rmi ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} || true
                 docker rmi ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest || true
