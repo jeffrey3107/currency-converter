@@ -8,6 +8,7 @@ pipeline {
         ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
         IMAGE_TAG = "${BUILD_NUMBER}"
         SONAR_PROJECT_KEY = 'currency-converter'
+        SONAR_HOST_URL = 'http://ip-172-31-42-227:9000'  // Update with correct IP if needed
     }
     
     stages {
@@ -24,17 +25,16 @@ pipeline {
                 script {
                     sh '''
                         cat > sonar-project.properties << EOFSONAR
-sonar.projectKey=${SONAR_PROJECT_KEY}
-sonar.projectName=Currency Converter
-sonar.projectVersion=1.0
-sonar.sources=.
-sonar.exclusions=**/*.log,**/venv/**,**/__pycache__/**
-EOFSONAR
+                        sonar.projectKey=${SONAR_PROJECT_KEY}
+                        sonar.projectName=Currency Converter
+                        sonar.projectVersion=1.0
+                        sonar.sources=.
+                        sonar.exclusions=**/*.log,**/venv/**,**/__pycache__/**
+                        EOFSONAR
                     '''
-                    
                     withSonarQubeEnv('SonarQube') {
                         sh '''
-                            docker run --rm --network host \
+                            docker run --rm --network sonarnet \
                                 -v "${PWD}:/usr/src" \
                                 -w /usr/src \
                                 sonarsource/sonar-scanner-cli:latest \
@@ -64,25 +64,14 @@ EOFSONAR
             steps {
                 echo 'Testing Docker image...'
                 sh '''
-                    # Create a test network
                     docker network create test-network || true
-                    
-                    # Clean up any existing test containers
                     docker stop currency-test-container 2>/dev/null || true
                     docker rm currency-test-container 2>/dev/null || true
-                    
-                    # Run container without port mapping (internal only)
                     docker run -d --name currency-test-container --network test-network \
                         ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
-                    
-                    # Wait for startup
                     sleep 20
-                    
-                    # Test using container name in network
                     docker run --rm --network test-network curlimages/curl:latest \
                         curl -f http://currency-test-container:5000
-                    
-                    # Cleanup
                     docker stop currency-test-container || true
                     docker rm currency-test-container || true
                     docker network rm test-network || true
@@ -94,9 +83,7 @@ EOFSONAR
         stage('🔐 ECR Login') {
             steps {
                 echo 'Logging into ECR...'
-                // Use AWS credentials from Jenkins
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', 
-                                credentialsId: 'aws-credentials']]) {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
                     sh '''
                         aws ecr get-login-password --region ${AWS_REGION} | \
                         docker login --username AWS --password-stdin ${ECR_REGISTRY}
@@ -116,31 +103,16 @@ EOFSONAR
             }
         }
         
-        stage('🚀 Deploy') {
+        stage('🚀 Deploy to EKS') {
             when {
                 branch 'main'
             }
             steps {
-                echo 'Deploying to EC2...'
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', 
-                                credentialsId: 'aws-credentials']]) {
+                echo 'Deploying to EKS...'
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
                     sh '''
-                        docker stop currency-converter-app || true
-                        docker rm currency-converter-app || true
-                        
-                        aws ecr get-login-password --region ${AWS_REGION} | \
-                        docker login --username AWS --password-stdin ${ECR_REGISTRY}
-                        
-                        docker pull ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
-                        
-                        docker run -d --name currency-converter-app \
-                            --restart unless-stopped \
-                            -p 5000:5000 \
-                            ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
-                        
-                        sleep 10
-                        curl -f http://localhost:5000 || exit 1
-                        echo "✅ Deployed successfully!"
+                        kubectl apply -f k8s-manifests/deployment.yaml
+                        kubectl apply -f k8s-manifests/service.yaml
                     '''
                 }
             }
@@ -149,12 +121,14 @@ EOFSONAR
     
     post {
         always {
-            echo '�� Cleanup...'
-            sh '''
-                docker rmi ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} || true
-                docker rmi ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest || true
-                docker system prune -f
-            '''
+            echo '🧹 Cleanup...'
+            node {
+                sh '''
+                    docker rmi ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} || true
+                    docker rmi ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest || true
+                    docker system prune -f
+                '''
+            }
         }
         success {
             echo '✅ Pipeline completed!'
