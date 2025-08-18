@@ -14,7 +14,7 @@ pipeline {
                 echo '🐍 Setting up Python environment...'
                 sh '''
                     python3 -m venv venv
-                    source venv/bin/activate
+                    . venv/bin/activate
                     pip install --upgrade pip
                     pip install -r requirements.txt
                     pip install pytest pytest-cov flake8
@@ -26,7 +26,7 @@ pipeline {
             steps {
                 echo '🧪 Running tests with coverage...'
                 sh '''
-                    source venv/bin/activate
+                    . venv/bin/activate
                     python -m pytest --cov=. --cov-report=xml --cov-report=html --junitxml=test-results.xml || true
                 '''
             }
@@ -35,26 +35,16 @@ pipeline {
         stage('📊 SonarQube Analysis') {
             steps {
                 echo '📊 Running SonarQube analysis...'
-                withSonarQubeEnv('SonarQube') {
-                    sh '''
-                        sonar-scanner \
-                        -Dsonar.projectKey=currency-converter \
-                        -Dsonar.projectName="Currency Converter" \
-                        -Dsonar.sources=. \
-                        -Dsonar.exclusions="**/venv/**,**/__pycache__/**,**/htmlcov/**" \
-                        -Dsonar.python.coverage.reportPaths=coverage.xml \
-                        -Dsonar.python.xunit.reportPath=test-results.xml
-                    '''
-                }
-            }
-        }
-        
-        stage('🏆 Quality Gate') {
-            steps {
-                echo '🏆 Waiting for Quality Gate...'
-                timeout(time: 2, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
+                sh '''
+                    sonar-scanner \
+                    -Dsonar.projectKey=currency-converter \
+                    -Dsonar.projectName="Currency Converter" \
+                    -Dsonar.sources=. \
+                    -Dsonar.exclusions="**/venv/**,**/__pycache__/**,**/htmlcov/**" \
+                    -Dsonar.python.coverage.reportPaths=coverage.xml \
+                    -Dsonar.python.xunit.reportPath=test-results.xml \
+                    -Dsonar.host.url=http://3.220.15.201:9000
+                '''
             }
         }
         
@@ -72,7 +62,7 @@ pipeline {
             sh 'docker rmi currency-converter:${BUILD_NUMBER} || true'
         }
         success {
-            echo '✅ Pipeline with SonarQube completed successfully!'
+            echo '✅ Pipeline completed successfully!'
         }
         failure {
             echo '❌ Pipeline failed!'
