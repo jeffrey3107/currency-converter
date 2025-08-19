@@ -27,7 +27,7 @@ pipeline {
                 echo '🧪 Running tests with coverage...'
                 sh '''
                     . venv/bin/activate
-                    python -m pytest --cov=. --cov-report=xml --cov-report=html --junitxml=test-results.xml || true
+                    python -m pytest --cov=. --cov-report=xml --cov-report=html --junitxml=test-results.xml -v
                 '''
             }
         }
@@ -35,16 +35,19 @@ pipeline {
         stage('📊 SonarQube Analysis') {
             steps {
                 echo '📊 Running SonarQube analysis...'
-                sh '''
-                    sonar-scanner \
-                    -Dsonar.projectKey=currency-converter \
-                    -Dsonar.projectName="Currency Converter" \
-                    -Dsonar.sources=. \
-                    -Dsonar.exclusions="**/venv/**,**/__pycache__/**,**/htmlcov/**" \
-                    -Dsonar.python.coverage.reportPaths=coverage.xml \
-                    -Dsonar.python.xunit.reportPath=test-results.xml \
-                    -Dsonar.host.url=http://3.220.15.201:9000
-                '''
+                withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
+                    sh '''
+                        sonar-scanner \
+                        -Dsonar.projectKey=currency-converter \
+                        -Dsonar.projectName="Currency Converter" \
+                        -Dsonar.sources=. \
+                        -Dsonar.exclusions="**/venv/**,**/__pycache__/**,**/htmlcov/**" \
+                        -Dsonar.python.coverage.reportPaths=coverage.xml \
+                        -Dsonar.python.xunit.reportPath=test-results.xml \
+                        -Dsonar.host.url=http://3.220.15.201:9000 \
+                        -Dsonar.token=$SONAR_TOKEN
+                    '''
+                }
             }
         }
         
@@ -58,8 +61,14 @@ pipeline {
     
     post {
         always {
-            echo '🧹 Cleaning up...'
-            sh 'docker rmi currency-converter:${BUILD_NUMBER} || true'
+            script {
+                try {
+                    echo '🧹 Cleaning up...'
+                    sh 'docker rmi currency-converter:${BUILD_NUMBER} || true'
+                } catch (Exception e) {
+                    echo "⚠️ Cleanup failed: ${e.getMessage()}"
+                }
+            }
         }
         success {
             echo '✅ Pipeline completed successfully!'
