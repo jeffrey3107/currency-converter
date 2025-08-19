@@ -117,7 +117,7 @@ pipeline {
                         git commit -m "CI: Update image to $IMAGE_TAG [skip ci]"
                         
                         # Push changes (ArgoCD will detect and deploy)
-                        git push origin main || echo "Push may have failed - continuing"
+                        git push origin HEAD:main || echo "Push may have failed - continuing"
                     fi
                 '''
             }
