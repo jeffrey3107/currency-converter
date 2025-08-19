@@ -40,8 +40,8 @@ pipeline {
             }
             post {
                 always {
-                    // Use junit instead of publishTestResults
-                    junit testResultsPattern: 'test-results.xml', allowEmptyResults: true
+                    // Fixed parameter name
+                    junit testResults: 'test-results.xml', allowEmptyResults: true
                     publishHTML([
                         allowMissing: false,
                         alwaysLinkToLastBuild: true,
