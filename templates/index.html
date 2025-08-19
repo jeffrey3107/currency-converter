@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -36,13 +35,21 @@
             font-size: 18px;
             color: green;
         }
+        .error {
+            margin-top: 20px;
+            font-size: 16px;
+            color: red;
+            background-color: #ffe6e6;
+            padding: 10px;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Forex Conversion</h1>
         <form method="POST">
-            <input type="number" name="amount" placeholder="Amount in USD" required>
+            <input type="text" name="amount" placeholder="Amount in USD" required>
             <select name="currency" required>
                 <option value="EUR">EUR</option>
                 <option value="GBP">GBP</option>
@@ -52,9 +59,13 @@
             <button type="submit">Convert</button>
         </form>
 
-        {% if converted_amount is not none %}
+        {% if error %}
+            <div class="error">
+                <p>{{ error }}</p>
+            </div>
+        {% elif result %}
             <div class="result">
-                <p>{{ amount }} USD = {{ converted_amount }} {{ target_currency }}</p>
+                <p>{{ result }}</p>
             </div>
         {% endif %}
     </div>

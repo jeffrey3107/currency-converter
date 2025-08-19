@@ -38,6 +38,21 @@ pipeline {
                     python -m pytest --cov=. --cov-report=xml --cov-report=html --junitxml=test-results.xml -v
                 '''
             }
+            post {
+                always {
+                    // Publish test results
+                    publishTestResults testResultsPattern: 'test-results.xml'
+                    // Publish coverage report
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: false,
+                        keepAll: true,
+                        reportDir: 'htmlcov',
+                        reportFiles: 'index.html',
+                        reportName: 'Coverage Report'
+                    ])
+                }
+            }
         }
         
         stage('📊 SonarQube Analysis') {
@@ -54,8 +69,28 @@ pipeline {
                         -Dsonar.python.xunit.reportPath=test-results.xml \
                         -Dsonar.host.url=http://3.220.15.201:9000 \
                         -Dsonar.token=$SONAR_TOKEN \
-                        -Dsonar.qualitygate.wait=false
+                        -Dsonar.qualitygate.wait=true \
+                        -Dsonar.qualitygate.timeout=300
                     '''
+                }
+            }
+        }
+        
+        stage('📈 SonarQube Quality Gate') {
+            steps {
+                script {
+                    echo '📈 Checking SonarQube Quality Gate...'
+                    timeout(time: 5, unit: 'MINUTES') {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            echo "❌ Quality Gate failed: ${qg.status}"
+                            echo "🔗 View details: http://3.220.15.201:9000/dashboard?id=currency-converter"
+                            // Don't fail the build, just warn
+                            currentBuild.result = 'UNSTABLE'
+                        } else {
+                            echo "✅ Quality Gate passed!"
+                        }
+                    }
                 }
             }
         }
@@ -128,10 +163,16 @@ pipeline {
         success {
             echo '✅ Pipeline completed successfully! 🎉'
             echo "📦 Docker Image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+            echo "📊 SonarQube: http://3.220.15.201:9000/dashboard?id=currency-converter"
             echo "🚀 ArgoCD will deploy this automatically!"
         }
         failure {
             echo '❌ Pipeline failed!'
+            echo "📊 Check SonarQube: http://3.220.15.201:9000/dashboard?id=currency-converter"
+        }
+        unstable {
+            echo '⚠️ Build unstable - Quality Gate issues detected'
+            echo "📊 Review SonarQube: http://3.220.15.201:9000/dashboard?id=currency-converter"
         }
     }
 }
