@@ -1,9 +1,9 @@
-# Create a simple, lightweight app.py
-
 from flask import Flask, request, render_template, jsonify
 import requests
 import os
 from datetime import datetime
+
+INDEX_TEMPLATE = 'index.html'
 
 app = Flask(__name__)
 
@@ -19,7 +19,7 @@ def get_exchange_rate(from_currency, to_currency):
         response = requests.get(url, timeout=5)
         data = response.json()
         return data['rates'].get(to_currency, 1.0)
-    except:
+    except (requests.RequestException, KeyError, ValueError):
         # Simple fallback rates for demo
         rates = {'EUR': 0.85, 'GBP': 0.73, 'CAD': 1.25, 'PLN': 4.0}
         return rates.get(to_currency, 1.0)
@@ -27,7 +27,7 @@ def get_exchange_rate(from_currency, to_currency):
 @app.route('/')
 def index():
     """Main page"""
-    return render_template('index.html')
+    return render_template(INDEX_TEMPLATE)
 
 @app.route('/', methods=['POST'])
 def convert():
@@ -37,30 +37,30 @@ def convert():
         to_currency = request.form.get('currency', '').strip().upper()
         
         if not amount_str or not to_currency:
-            return render_template('index.html', error="Please fill in all fields")
+            return render_template(INDEX_TEMPLATE, error="Please fill in all fields")
         
         try:
             amount = float(amount_str)
             if amount <= 0:
-                return render_template('index.html', error="Amount must be positive")
+                return render_template(INDEX_TEMPLATE, error="Amount must be positive")
             if amount > 1000000:
-                return render_template('index.html', error="Amount too large")
+                return render_template(INDEX_TEMPLATE, error="Amount too large")
         except ValueError:
-            return render_template('index.html', error="Please enter a valid amount")
+            return render_template(INDEX_TEMPLATE, error="Please enter a valid amount")
         
         valid_currencies = ['EUR', 'GBP', 'CAD', 'PLN']
         if to_currency not in valid_currencies:
-            return render_template('index.html', error="Invalid currency selected")
+            return render_template(INDEX_TEMPLATE, error="Invalid currency selected")
         
         # Get rate and convert
         rate = get_exchange_rate('USD', to_currency)
         converted_amount = amount * rate
         
         result = f"{amount} USD = {converted_amount:.2f} {to_currency}"
-        return render_template('index.html', result=result)
+        return render_template(INDEX_TEMPLATE, result=result)
         
-    except Exception as e:
-        return render_template('index.html', error="Conversion error occurred")
+    except Exception:
+        return render_template(INDEX_TEMPLATE, error="Conversion error occurred")
 
 @app.route('/health')
 def health():
